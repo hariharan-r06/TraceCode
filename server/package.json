@@ -1,0 +1,42 @@
+{
+    "name": "tracecode-backend",
+    "version": "1.0.0",
+    "description": "TraceCode - Express.js backend for secure code execution and debugging",
+    "main": "dist/index.js",
+    "scripts": {
+        "dev": "tsx watch src/index.ts",
+        "build": "tsc",
+        "start": "node dist/index.js",
+        "clean": "rimraf dist"
+    },
+    "keywords": [
+        "tracecode",
+        "code-execution",
+        "ai",
+        "education"
+    ],
+    "author": "TraceCode Team",
+    "license": "MIT",
+    "dependencies": {
+        "express": "^4.18.2",
+        "cors": "^2.8.5",
+        "dotenv": "^16.3.1",
+        "bcrypt": "^5.1.1",
+        "jsonwebtoken": "^9.0.2",
+        "firebase-admin": "^12.0.0",
+        "openai": "^4.28.0",
+        "joi": "^17.12.0",
+        "uuid": "^9.0.1"
+    },
+    "devDependencies": {
+        "@types/express": "^4.17.21",
+        "@types/cors": "^2.8.17",
+        "@types/bcrypt": "^5.0.2",
+        "@types/jsonwebtoken": "^9.0.5",
+        "@types/node": "^20.11.17",
+        "@types/uuid": "^9.0.7",
+        "typescript": "^5.3.3",
+        "tsx": "^4.7.1",
+        "rimraf": "^5.0.5"
+    }
+}
