@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  # TraceCode Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - NODE_ENV=production
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./temp:/app/temp
+    depends_on:
+      - sandbox-builder
+    networks:
+      - tracecode-network
+
+  # Build the sandbox image
+  sandbox-builder:
+    build:
+      context: ./docker
+      dockerfile: Dockerfile.sandbox
+    image: tracecode-sandbox:latest
+    command: ["echo", "Sandbox image built"]
+
+networks:
+  tracecode-network:
+    driver: bridge
