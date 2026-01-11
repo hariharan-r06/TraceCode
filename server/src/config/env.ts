@@ -4,7 +4,7 @@ dotenv.config();
 
 export const config = {
     // Server
-    port: process.env.PORT || 8000,
+    port: process.env.PORT || 8001,
     environment: process.env.ENVIRONMENT || 'development',
 
     // JWT
