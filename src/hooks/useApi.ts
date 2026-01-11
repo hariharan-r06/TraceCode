@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { API_BASE_URL } from '@/config/firebase';
 
 interface ApiState<T> {
   data: T | null;
@@ -6,11 +7,12 @@ interface ApiState<T> {
   error: string | null;
 }
 
-interface RunCodeRequest {
+export interface CodeRunRequest {
   code: string;
-  language: string;
+  language?: 'python' | 'cpp' | 'c' | 'java';
   input?: string;
 }
+
 
 interface RunCodeResponse {
   success: boolean;
@@ -54,93 +56,92 @@ interface HistoryItem {
   executionTime: number;
 }
 
-// Mock data generators
-const mockRunCode = async (request: RunCodeRequest): Promise<RunCodeResponse> => {
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  const hasError = request.code.includes('error') || Math.random() > 0.7;
-  
-  if (hasError) {
-    return {
-      success: false,
-      output: '',
-      compilationResult: `Error: undefined variable 'x' at line 3`,
-      executionTime: 0,
-      status: 'compilation_error',
-    };
+// Real API call to run code
+const runCodeApi = async (request: CodeRunRequest): Promise<RunCodeResponse> => {
+  const response = await fetch(`${API_BASE_URL}/api/code/run`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      code: request.code,
+      language: request.language || 'python',
+      input: request.input || ''
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to execute code');
   }
-  
+
+  const data = await response.json();
+
+  // Map backend response to frontend format
   return {
-    success: true,
-    output: 'Hello, World!\nProgram executed successfully.',
-    compilationResult: 'Compilation successful',
-    executionTime: 0.042,
-    status: 'success',
+    success: data.success,
+    output: data.output || '',
+    compilationResult: data.compilation_result || '',
+    executionTime: data.execution_time || 0,
+    status: data.status
   };
 };
 
-const mockGetHint = async (request: HintRequest): Promise<HintResponse> => {
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
+// Real API call to get hints
+const getHintApi = async (request: HintRequest): Promise<HintResponse> => {
+  const response = await fetch(`${API_BASE_URL}/api/hints/get`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      code: request.code,
+      language: request.language || 'python',
+      error: request.error || ''
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to get hints');
+  }
+
+  const data = await response.json();
+
   return {
-    errorType: 'syntax',
-    hints: [
-      'Check if all variables are declared before use',
-      'Verify that your loop conditions are correct',
-      'Make sure all brackets are properly closed',
-    ],
-    rootCause: 'The variable "x" is being used before it has been declared. In most programming languages, variables must be declared before they can be used.',
-    conceptReferences: [
-      { title: 'Variable Declaration', url: '#' },
-      { title: 'Scope in Programming', url: '#' },
-    ],
-    minimalPatch: 'Add variable declaration: int x = 0; before line 3',
+    errorType: data.error_type || 'none',
+    hints: data.hints || [],
+    rootCause: data.root_cause || '',
+    conceptReferences: data.concept_references || [],
+    minimalPatch: data.minimal_patch || ''
   };
 };
 
-const mockGetAnalytics = async (): Promise<AnalyticsResponse> => {
-  await new Promise(resolve => setTimeout(resolve, 800));
-  
-  return {
-    totalStudents: 156,
-    totalSubmissions: 2847,
-    successRate: 72.5,
-    averageDebugTime: 4.2,
-    commonErrors: [
-      { name: 'Syntax Error', count: 423 },
-      { name: 'Runtime Error', count: 312 },
-      { name: 'Logic Error', count: 189 },
-      { name: 'Timeout', count: 67 },
-      { name: 'Memory Error', count: 45 },
-    ],
-    performanceTrend: [
-      { date: 'Week 1', success: 45, total: 120 },
-      { date: 'Week 2', success: 78, total: 150 },
-      { date: 'Week 3', success: 92, total: 140 },
-      { date: 'Week 4', success: 110, total: 160 },
-      { date: 'Week 5', success: 125, total: 155 },
-      { date: 'Week 6', success: 140, total: 170 },
-    ],
-    difficultConcepts: [
-      { concept: 'Recursion', errorRate: 45 },
-      { concept: 'Pointers', errorRate: 62 },
-      { concept: 'Dynamic Memory', errorRate: 38 },
-      { concept: 'OOP Concepts', errorRate: 28 },
-      { concept: 'File I/O', errorRate: 22 },
-    ],
-  };
-};
+// Real API call to get history
+const getHistoryApi = async (): Promise<HistoryItem[]> => {
+  const token = localStorage.getItem('token');
 
-const mockGetHistory = async (): Promise<HistoryItem[]> => {
-  await new Promise(resolve => setTimeout(resolve, 600));
-  
-  return [
-    { id: '1', code: 'print("Hello")', language: 'Python', status: 'success', timestamp: '2024-01-15T10:30:00Z', executionTime: 0.02 },
-    { id: '2', code: 'int main() {...}', language: 'C', status: 'error', timestamp: '2024-01-15T09:15:00Z', errorType: 'syntax', executionTime: 0 },
-    { id: '3', code: 'public class Main', language: 'Java', status: 'success', timestamp: '2024-01-14T14:20:00Z', executionTime: 0.15 },
-    { id: '4', code: 'cout << "Test"', language: 'C++', status: 'error', timestamp: '2024-01-14T11:45:00Z', errorType: 'runtime', executionTime: 0.01 },
-    { id: '5', code: 'def factorial(n):', language: 'Python', status: 'success', timestamp: '2024-01-13T16:00:00Z', executionTime: 0.03 },
-  ];
+  if (!token) {
+    return [];
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/submissions`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to load history');
+  }
+
+  const data = await response.json();
+
+  return data.submissions.map((sub: any) => ({
+    id: sub.id,
+    code: sub.code,
+    language: sub.language,
+    status: sub.status,
+    timestamp: sub.timestamp,
+    errorType: sub.error_type,
+    executionTime: sub.execution_time
+  }));
 };
 
 export const useRunCode = () => {
@@ -150,11 +151,10 @@ export const useRunCode = () => {
     error: null,
   });
 
-  const execute = useCallback(async (request: RunCodeRequest) => {
+  const execute = useCallback(async (request: CodeRunRequest) => {
     setState({ data: null, isLoading: true, error: null });
     try {
-      // Replace with actual API call: await fetch('/api/run', { method: 'POST', body: JSON.stringify(request) })
-      const data = await mockRunCode(request);
+      const data = await runCodeApi(request);
       setState({ data, isLoading: false, error: null });
       return data;
     } catch (err) {
@@ -177,8 +177,7 @@ export const useGetHint = () => {
   const execute = useCallback(async (request: HintRequest) => {
     setState({ data: null, isLoading: true, error: null });
     try {
-      // Replace with actual API call: await fetch('/api/hint', { method: 'POST', body: JSON.stringify(request) })
-      const data = await mockGetHint(request);
+      const data = await getHintApi(request);
       setState({ data, isLoading: false, error: null });
       return data;
     } catch (err) {
@@ -201,8 +200,16 @@ export const useAnalytics = () => {
   const execute = useCallback(async () => {
     setState({ data: null, isLoading: true, error: null });
     try {
-      // Replace with actual API call: await fetch('/api/analytics')
-      const data = await mockGetAnalytics();
+      // Analytics is still mock for now (instructor feature)
+      const data: AnalyticsResponse = {
+        totalStudents: 0,
+        totalSubmissions: 0,
+        successRate: 0,
+        averageDebugTime: 0,
+        commonErrors: [],
+        performanceTrend: [],
+        difficultConcepts: []
+      };
       setState({ data, isLoading: false, error: null });
       return data;
     } catch (err) {
@@ -225,8 +232,7 @@ export const useHistory = () => {
   const execute = useCallback(async () => {
     setState({ data: null, isLoading: true, error: null });
     try {
-      // Replace with actual API call: await fetch('/api/history')
-      const data = await mockGetHistory();
+      const data = await getHistoryApi();
       setState({ data, isLoading: false, error: null });
       return data;
     } catch (err) {
